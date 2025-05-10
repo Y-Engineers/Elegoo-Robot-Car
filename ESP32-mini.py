@@ -1,26 +1,57 @@
 # esp32-serial2-mega.py
-# ESP32 D1 R32 uart2 Arduino Mega Serial1()
-# GPIO16 / U2RX / IO16 <--- black <--- yellow <--- TX1 / D18
-# GPIO17 / U2TX / IO17 --->  green ---> green ---> RX1 / D19
+# Kommunikation vom ESP32 D1 R32 (UART2) zum Arduino Mega (Serial1)
+# Verkabelung:
+# GPIO16 (U2RX) <-- Mega TX1 (D18)
+# GPIO17 (U2TX) --> Mega RX1 (D19)
 
-import machine, time, sys
+import machine
+import time
+import sys
+from typing import Optional
 
-# uart2 = machine.UART(2, 115200)
-uart2 = machine.UART(2, 9600)
-uart2.init()
+def initialize_uart(uart_number: int, baudrate: int = 9600) -> machine.UART:
+    """Initialisiert die UART-Schnittstelle mit gegebener Baudrate."""
+    uart = machine.UART(uart_number, baudrate)
+    uart.init()
+    return uart
 
-ende: bool = False
-print( "Bytes im Puffer: ", uart2.any() )
-print( "Leere UART2" )
+def clear_uart_buffer(uart: machine.UART) -> None:
+    """Löscht alle Daten aus dem UART-Puffer durch Auslesen."""
+    print("Bytes im Puffer:", uart.any())
+    print("Leere UART2...")
+    while uart.any():
+        uart.read()  # Verwerfe alle vorhandenen Daten
 
-while uart2.any():
-  uart2.read()
-  print("Start")
-while not ende:
-  command: str = input("Enter command\n")
-  uart2.write(command)
-  
-  time.sleep(1.1)
-  
-  # while uart2.any():
-  # print(uart2.read().decode())
+def send_command(uart: machine.UART, command: str) -> None:
+    """Sendet einen Befehl über UART und gibt ggf. eine Antwort aus."""
+    uart.write(command + "\n")  # Hänge Zeilenumbruch an
+    time.sleep(1.1)  # Kurze Pause zur Verarbeitung
+
+    if uart.any():
+        response: Optional[bytes] = uart.read()
+        if response:
+            try:
+                print("Response:", response.decode().strip())
+            except UnicodeDecodeError:
+                print("Nicht decodierbare Daten empfangen:", response)
+
+def main() -> None:
+    """Hauptschleife zur Benutzereingabe und Kommunikation per UART2."""
+    uart2: machine.UART = initialize_uart(2, 9600)
+    clear_uart_buffer(uart2)
+
+    while True:
+        try:
+            command: str = input("Enter command (or 'exit' to quit):\n").strip()
+            if command.lower() == "exit":
+                print("Beende Programm...")
+                break
+            send_command(uart2, command)
+        except KeyboardInterrupt:
+            print("\nVom Benutzer abgebrochen.")
+            break
+        except Exception as e:
+            print("Fehler:", e)
+
+if __name__ == "__main__":
+    main()
