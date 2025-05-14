@@ -18,6 +18,7 @@ void stopMotors() {
   analogWrite(ENA, 0); digitalWrite(IN1, HIGH); digitalWrite(IN2, HIGH);
   analogWrite(ENB, 0); digitalWrite(IN3, HIGH); digitalWrite(IN4, HIGH);
   Serial.println("[Feedback] Motors stopped.");
+  Serial1.println("[Feedback] Motors stopped.");
 }
 
 void drive() {
@@ -25,10 +26,12 @@ void drive() {
     analogWrite(ENA, speedValue); digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
     analogWrite(ENB, speedValue); digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
     Serial.print("[Feedback] Driving forward at speed "); Serial.println(speedValue);
+    Serial1.print("[Feedback] Driving forward at speed "); Serial1.println(speedValue);
   } else if (speedValue < 0) {
     analogWrite(ENA, -speedValue); digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
     analogWrite(ENB, -speedValue); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
     Serial.print("[Feedback] Driving backward at speed "); Serial.println(-speedValue);
+    Serial1.print("[Feedback] Driving backward at speed "); Serial1.println(-speedValue);
   } else {
     stopMotors();
   }
@@ -47,6 +50,7 @@ void setup() {
 
   stopMotors();
   Serial.println("[System] Ready.");
+  Serial1.println("[System] Ready.");
 }
 
 // ====== LOOP ======
@@ -57,6 +61,9 @@ void loop() {
 
     Serial.print("[Input] Received: ");
     Serial.println(inputString);
+
+    Serial1.print("[Input] Received: ");
+    Serial1.println(inputString);
 
     if (inputString == "d") {
       speedValue = abs(speedValue);
@@ -74,8 +81,11 @@ void loop() {
         myservo.write(angle);
         Serial.print("[Feedback] Servo moved to angle: ");
         Serial.println(angle);
+        Serial1.print("[Feedback] Servo moved to angle: ");
+        Serial1.println(angle);
       } else {
         Serial.println("[Error] Invalid angle value.");
+        Serial1.println("[Error] Invalid angle value.");
       }
     } else if (inputString.startsWith("v")) {
       int newSpeed = inputString.substring(1).toInt();
@@ -84,14 +94,19 @@ void loop() {
           speedValue = newSpeed;
           Serial.print("[Feedback] Speed set to: ");
           Serial.println(speedValue);
+          Serial1.print("[Feedback] Speed set to: ");
+          Serial1.println(speedValue);
         } else {
           Serial.println("[Error] Speed out of range (120–255).");
+          Serial1.println("[Error] Speed out of range (120–255).");
         }
       } else {
         Serial.println("[Error] Invalid speed value.");
+        Serial1.println("[Error] Invalid speed value.");
       }
     } else {
       Serial.println("[Error] Unknown command.");
+      Serial1.println("[Error] Unknown command.");
     }
   }
 }
