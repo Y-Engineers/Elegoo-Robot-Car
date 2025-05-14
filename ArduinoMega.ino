@@ -1,93 +1,36 @@
-#include <Servo.h>  // Servo library
+#include <Servo.h>
 
 // ====== CONSTANTS ======
-constexpr byte servoPin = 3;
-constexpr byte servoMin = 30;
-constexpr byte servoMax = 150;
+const byte servoPin = 3;
+const byte servoMin = 30;
+const byte servoMax = 150;
 
-constexpr byte ENA = 5, IN1 = 7, IN2 = 8;   // Left motor
-constexpr byte ENB = 6, IN3 = 9, IN4 = 11;  // Right motor
+const byte ENA = 5, IN1 = 7, IN2 = 8;   // Left motor
+const byte ENB = 6, IN3 = 9, IN4 = 11;  // Right motor
 
 const int minSpeed = 120;
 int speedValue = 150;
-const int speedStep = 20;
 
-const bool DEBUG = true;
-
-// ====== SERVO ======
 Servo myservo;
 
-// ====== BUFFER ======
-#define BUFFER_SIZE 32
-char inputBuffer[BUFFER_SIZE];
-byte inputPos = 0;
-
 // ====== HELPER FUNCTIONS ======
-
-void applyMotorBrake() {
+void stopMotors() {
   analogWrite(ENA, 0); digitalWrite(IN1, HIGH); digitalWrite(IN2, HIGH);
   analogWrite(ENB, 0); digitalWrite(IN3, HIGH); digitalWrite(IN4, HIGH);
-}
-
-void stopMotors() {
-  applyMotorBrake();
-  if (DEBUG) Serial.println("[Feedback] Motors stopped.");
+  Serial.println("[Feedback] Motors stopped.");
 }
 
 void drive() {
   if (speedValue > 0) {
     analogWrite(ENA, speedValue); digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
     analogWrite(ENB, speedValue); digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
-    if (DEBUG) Serial.print("[Feedback] Driving forward at speed ");
+    Serial.print("[Feedback] Driving forward at speed "); Serial.println(speedValue);
   } else if (speedValue < 0) {
     analogWrite(ENA, -speedValue); digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
     analogWrite(ENB, -speedValue); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
-    if (DEBUG) Serial.print("[Feedback] Driving backward at speed ");
+    Serial.print("[Feedback] Driving backward at speed "); Serial.println(-speedValue);
   } else {
-    applyMotorBrake();
-    if (DEBUG) Serial.println("[Feedback] Motors not moving (speed = 0).");
-    return;
-  }
-  if (DEBUG) Serial.println(abs(speedValue));
-}
-
-void processCommand(String input) {
-  input.trim();
-  if (input == "d") {
-    speedValue = abs(speedValue);
-    drive();
-  } else if (input == "b") {
-    speedValue = -abs(speedValue);
-    drive();
-  } else if (input == "s") {
     stopMotors();
-  } else if (input.startsWith("a")) {
-    String angleString = input.substring(1);
-    int angle = angleString.toInt();
-    if (angleString == "0" || angle != 0) {
-      angle = constrain(angle, servoMin, servoMax);
-      myservo.write(angle);
-      if (DEBUG) {
-        Serial.print("[Feedback] Servo moved to angle: ");
-        Serial.println(angle);
-      }
-    } else {
-      Serial.println("[Error] Invalid input for servo angle.");
-    }
-  } else if (input.startsWith("v")) {
-    int newSpeed = input.substring(1).toInt();
-    if (newSpeed >= minSpeed && newSpeed <= 255) {
-      speedValue = newSpeed;
-      if (DEBUG) {
-        Serial.print("[Feedback] Speed set to: ");
-        Serial.println(speedValue);
-      }
-    } else {
-      Serial.println("[Error] Invalid speed value (must be 120–255).");
-    }
-  } else {
-    Serial.print("[Error] Unknown command: ");
-    Serial.println(input);
   }
 }
 
@@ -102,27 +45,53 @@ void setup() {
   myservo.attach(servoPin);
   myservo.write(60); delay(1000);  // Initial straight position
 
-  speedValue = 150;
   stopMotors();
-
-  if (DEBUG) Serial.println("[System] Ready to receive commands.");
+  Serial.println("[System] Ready.");
 }
 
 // ====== LOOP ======
 void loop() {
-  while (Serial1.available()) {
-    char c = Serial1.read();
-    if (c == '\n') {
-      inputBuffer[inputPos] = '\0';  // Null-terminate
-      String command = String(inputBuffer);
-      if (DEBUG) {
-        Serial.print("[Input] Received command: ");
-        Serial.println(command);
+  if (Serial1.available()) {
+    String inputString = Serial1.readStringUntil('\n');
+    inputString.trim();
+
+    Serial.print("[Input] Received: ");
+    Serial.println(inputString);
+
+    if (inputString == "d") {
+      speedValue = abs(speedValue);
+      drive();
+    } else if (inputString == "b") {
+      speedValue = -abs(speedValue);
+      drive();
+    } else if (inputString == "s") {
+      stopMotors();
+    } else if (inputString.startsWith("a")) {
+      String angleString = inputString.substring(1);
+      int angle = angleString.toInt();
+      if (angleString == "0" || angle != 0) {
+        angle = constrain(angle, servoMin, servoMax);
+        myservo.write(angle);
+        Serial.print("[Feedback] Servo moved to angle: ");
+        Serial.println(angle);
+      } else {
+        Serial.println("[Error] Invalid angle value.");
       }
-      processCommand(command);
-      inputPos = 0;
-    } else if (inputPos < BUFFER_SIZE - 1) {
-      inputBuffer[inputPos++] = c;
+    } else if (inputString.startsWith("v")) {
+      int newSpeed = inputString.substring(1).toInt();
+      if ((inputString.substring(1) == "0") || newSpeed != 0) {
+        if (newSpeed >= minSpeed && newSpeed <= 255) {
+          speedValue = newSpeed;
+          Serial.print("[Feedback] Speed set to: ");
+          Serial.println(speedValue);
+        } else {
+          Serial.println("[Error] Speed out of range (120–255).");
+        }
+      } else {
+        Serial.println("[Error] Invalid speed value.");
+      }
+    } else {
+      Serial.println("[Error] Unknown command.");
     }
   }
 }
