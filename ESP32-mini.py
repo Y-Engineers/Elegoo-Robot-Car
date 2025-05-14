@@ -39,7 +39,7 @@ def send_command(uart: machine.UART, command: str) -> None:
         response: Optional[bytes] = uart.read()
         if response:
             try:
-                print("Response:", response.decode().strip())
+                print("Response:\n" + response.decode().strip())
             except UnicodeDecodeError:
                 print("Received undecodable data:", response)
 
