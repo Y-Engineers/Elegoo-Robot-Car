@@ -14,24 +14,31 @@ int speedValue = 150;
 Servo myservo;
 
 // ====== HELPER FUNCTIONS ======
+void logBoth(const String& msg) {
+  Serial.println(msg);
+  Serial1.println(msg);
+}
+
+void logBothf(const char* prefix, int value) {
+  Serial.print(prefix); Serial.println(value);
+  Serial1.print(prefix); Serial1.println(value);
+}
+
 void stopMotors() {
   analogWrite(ENA, 0); digitalWrite(IN1, HIGH); digitalWrite(IN2, HIGH);
   analogWrite(ENB, 0); digitalWrite(IN3, HIGH); digitalWrite(IN4, HIGH);
-  Serial.println("[Feedback] Motors stopped.");
-  Serial1.println("[Feedback] Motors stopped.");
+  logBoth("[Feedback] Motors stopped.");
 }
 
 void drive() {
   if (speedValue > 0) {
     analogWrite(ENA, speedValue); digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
     analogWrite(ENB, speedValue); digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
-    Serial.print("[Feedback] Driving forward at speed "); Serial.println(speedValue);
-    Serial1.print("[Feedback] Driving forward at speed "); Serial1.println(speedValue);
+    logBothf("[Feedback] Driving forward at speed ", speedValue);
   } else if (speedValue < 0) {
     analogWrite(ENA, -speedValue); digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
     analogWrite(ENB, -speedValue); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
-    Serial.print("[Feedback] Driving backward at speed "); Serial.println(-speedValue);
-    Serial1.print("[Feedback] Driving backward at speed "); Serial1.println(-speedValue);
+    logBothf("[Feedback] Driving backward at speed ", -speedValue);
   } else {
     stopMotors();
   }
@@ -46,67 +53,51 @@ void setup() {
   pinMode(ENB, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
 
   myservo.attach(servoPin);
-  myservo.write(60); delay(1000);  // Initial straight position
+  myservo.write(60); delay(1000);
 
   stopMotors();
-  Serial.println("[System] Ready.");
-  Serial1.println("[System] Ready.");
+  logBoth("[System] Ready.");
 }
 
 // ====== LOOP ======
 void loop() {
   if (Serial1.available()) {
-    String inputString = Serial1.readStringUntil('\n');
-    inputString.trim();
+    String input = Serial1.readStringUntil('\n');
+    input.trim();
+    logBoth("[Input] Received: " + input);
 
-    Serial.print("[Input] Received: ");
-    Serial.println(inputString);
-
-    Serial1.print("[Input] Received: ");
-    Serial1.println(inputString);
-
-    if (inputString == "d") {
+    if (input == "d") {
       speedValue = abs(speedValue);
       drive();
-    } else if (inputString == "b") {
+    } else if (input == "b") {
       speedValue = -abs(speedValue);
       drive();
-    } else if (inputString == "s") {
+    } else if (input == "s") {
       stopMotors();
-    } else if (inputString.startsWith("a")) {
-      String angleString = inputString.substring(1);
-      int angle = angleString.toInt();
-      if (angleString == "0" || angle != 0) {
+    } else if (input.startsWith("a")) {
+      String angleStr = input.substring(1);
+      int angle = angleStr.toInt();
+      if (angleStr == "0" || angle != 0) {
         angle = constrain(angle, servoMin, servoMax);
         myservo.write(angle);
-        Serial.print("[Feedback] Servo moved to angle: ");
-        Serial.println(angle);
-        Serial1.print("[Feedback] Servo moved to angle: ");
-        Serial1.println(angle);
+        logBothf("[Feedback] Servo moved to angle: ", angle);
       } else {
-        Serial.println("[Error] Invalid angle value.");
-        Serial1.println("[Error] Invalid angle value.");
+        logBoth("[Error] Invalid angle value.");
       }
-    } else if (inputString.startsWith("v")) {
-      int newSpeed = inputString.substring(1).toInt();
-      if ((inputString.substring(1) == "0") || newSpeed != 0) {
+    } else if (input.startsWith("v")) {
+      int newSpeed = input.substring(1).toInt();
+      if ((input.substring(1) == "0") || newSpeed != 0) {
         if (newSpeed >= minSpeed && newSpeed <= 255) {
           speedValue = newSpeed;
-          Serial.print("[Feedback] Speed set to: ");
-          Serial.println(speedValue);
-          Serial1.print("[Feedback] Speed set to: ");
-          Serial1.println(speedValue);
+          logBothf("[Feedback] Speed set to: ", speedValue);
         } else {
-          Serial.println("[Error] Speed out of range (120–255).");
-          Serial1.println("[Error] Speed out of range (120–255).");
+          logBoth("[Error] Speed out of range (120–255).");
         }
       } else {
-        Serial.println("[Error] Invalid speed value.");
-        Serial1.println("[Error] Invalid speed value.");
+        logBoth("[Error] Invalid speed value.");
       }
     } else {
-      Serial.println("[Error] Unknown command.");
-      Serial1.println("[Error] Unknown command.");
+      logBoth("[Error] Unknown command.");
     }
   }
 }
