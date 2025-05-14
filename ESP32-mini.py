@@ -1,10 +1,8 @@
-# esp32_mega_uart.py
-# UART2 communication from ESP32 D1 R32 to Arduino Mega (Serial1)
+# esp32_uart0_control.py
+# Non-blocking UART0 input from USB and UART2 output to Arduino Mega
 
 import machine
 import time
-import sys
-# from typing import Optional
 
 COMMANDS = {
     "d": "Drive forward",
@@ -36,27 +34,40 @@ def send_command(uart: machine.UART, command: str) -> None:
     time.sleep(1.1)
 
     if uart.any():
-        response: Optional[bytes] = uart.read()
+        response = uart.read()
         if response:
             try:
                 print("Response:", response.decode().strip())
             except UnicodeDecodeError:
                 print("Received undecodable data:", response)
 
-def main() -> None:
-    uart2: machine.UART = initialize_uart(2, 9600)
-    clear_uart_buffer(uart2)
+def check_uart_input(uart: machine.UART) -> str | None:
+    if uart.any():
+        try:
+            data = uart.read().decode().strip()
+            return data
+        except UnicodeDecodeError:
+            print("Invalid input from UART0.")
+    return None
 
-    print("ESP32 ↔ Arduino Mega UART Communication Started.")
+def main() -> None:
+    uart0 = initialize_uart(0, 115200)  # USB to PC
+    uart2 = initialize_uart(2, 9600)    # Arduino Mega
+
+    clear_uart_buffer(uart2)
+    print("ESP32 UART0 (USB) ↔ UART2 (Arduino) Communication Started.")
     print_command_list()
 
     while True:
         try:
-            command: str = input("Enter command: ").strip()
-            if command.lower() == "exit":
-                print("Exiting program...")
-                break
-            send_command(uart2, command)
+            command = check_uart_input(uart0)
+            if command:
+                print("Received:", command)
+                if command.lower() == "exit":
+                    print("Exiting program...")
+                    break
+                send_command(uart2, command)
+            time.sleep(0.1)  # Short delay to avoid high CPU usage
         except KeyboardInterrupt:
             print("\nProgram interrupted.")
             break
