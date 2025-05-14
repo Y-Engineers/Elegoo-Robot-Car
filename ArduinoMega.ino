@@ -31,24 +31,24 @@ void applyMotorBrake() {
 
 void stopMotors() {
   applyMotorBrake();
-  if (DEBUG) Serial.println("Motors OFF");
+  if (DEBUG) Serial.println("[Feedback] Motors stopped.");
 }
 
 void drive() {
   if (speedValue > 0) {
-    // Forward
     analogWrite(ENA, speedValue); digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
     analogWrite(ENB, speedValue); digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
-    if (DEBUG) Serial.println("Motors FORWARD");
+    if (DEBUG) Serial.print("[Feedback] Driving forward at speed ");
   } else if (speedValue < 0) {
-    // Reverse
     analogWrite(ENA, -speedValue); digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
     analogWrite(ENB, -speedValue); digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
-    if (DEBUG) Serial.println("Motors REVERSE");
+    if (DEBUG) Serial.print("[Feedback] Driving backward at speed ");
   } else {
     applyMotorBrake();
-    if (DEBUG) Serial.println("Motors OFF (speed = 0)");
+    if (DEBUG) Serial.println("[Feedback] Motors not moving (speed = 0).");
+    return;
   }
+  if (DEBUG) Serial.println(abs(speedValue));
 }
 
 void processCommand(String input) {
@@ -68,25 +68,26 @@ void processCommand(String input) {
       angle = constrain(angle, servoMin, servoMax);
       myservo.write(angle);
       if (DEBUG) {
-        Serial.print("Servo moved to: ");
+        Serial.print("[Feedback] Servo moved to angle: ");
         Serial.println(angle);
       }
     } else {
-      Serial.println("Invalid input for servo angle.");
+      Serial.println("[Error] Invalid input for servo angle.");
     }
   } else if (input.startsWith("v")) {
     int newSpeed = input.substring(1).toInt();
     if (newSpeed >= minSpeed && newSpeed <= 255) {
       speedValue = newSpeed;
       if (DEBUG) {
-        Serial.print("Speed set to: ");
+        Serial.print("[Feedback] Speed set to: ");
         Serial.println(speedValue);
       }
     } else {
-      Serial.println("Invalid speed value.");
+      Serial.println("[Error] Invalid speed value (must be 120–255).");
     }
   } else {
-    Serial.println("Invalid command.");
+    Serial.print("[Error] Unknown command: ");
+    Serial.println(input);
   }
 }
 
@@ -104,7 +105,7 @@ void setup() {
   speedValue = 150;
   stopMotors();
 
-  if (DEBUG) Serial.println("System ready.");
+  if (DEBUG) Serial.println("[System] Ready to receive commands.");
 }
 
 // ====== LOOP ======
@@ -113,7 +114,12 @@ void loop() {
     char c = Serial1.read();
     if (c == '\n') {
       inputBuffer[inputPos] = '\0';  // Null-terminate
-      processCommand(String(inputBuffer));
+      String command = String(inputBuffer);
+      if (DEBUG) {
+        Serial.print("[Input] Received command: ");
+        Serial.println(command);
+      }
+      processCommand(command);
       inputPos = 0;
     } else if (inputPos < BUFFER_SIZE - 1) {
       inputBuffer[inputPos++] = c;
