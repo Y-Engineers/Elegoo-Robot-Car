@@ -1,31 +1,39 @@
-# esp32-serial2-mega.py
-# Kommunikation vom ESP32 D1 R32 (UART2) zum Arduino Mega (Serial1)
-# Verkabelung:
-# GPIO16 (U2RX) <-- Mega TX1 (D18)
-# GPIO17 (U2TX) --> Mega RX1 (D19)
+# esp32_mega_uart.py
+# UART2 communication from ESP32 D1 R32 to Arduino Mega (Serial1)
 
 import machine
 import time
 import sys
-from typing import Optional
+# from typing import Optional
+
+COMMANDS = {
+    "d": "Drive forward",
+    "b": "Drive backward",
+    "s": "Stop motors",
+    "a<angle>": "Set servo angle (30–150)",
+    "v<speed>": "Set speed (120–255)",
+    "exit": "Exit the program"
+}
 
 def initialize_uart(uart_number: int, baudrate: int = 9600) -> machine.UART:
-    """Initialisiert die UART-Schnittstelle mit gegebener Baudrate."""
     uart = machine.UART(uart_number, baudrate)
     uart.init()
     return uart
 
 def clear_uart_buffer(uart: machine.UART) -> None:
-    """Löscht alle Daten aus dem UART-Puffer durch Auslesen."""
-    print("Bytes im Puffer:", uart.any())
-    print("Leere UART2...")
+    print("Clearing UART buffer...")
     while uart.any():
-        uart.read()  # Verwerfe alle vorhandenen Daten
+        uart.read()
+
+def print_command_list() -> None:
+    print("\nAvailable commands:")
+    for cmd, desc in COMMANDS.items():
+        print(f"  {cmd:10} - {desc}")
+    print()
 
 def send_command(uart: machine.UART, command: str) -> None:
-    """Sendet einen Befehl über UART und gibt ggf. eine Antwort aus."""
-    uart.write(command + "\n")  # Hänge Zeilenumbruch an
-    time.sleep(1.1)  # Kurze Pause zur Verarbeitung
+    uart.write(command + "\n")
+    time.sleep(1.1)
 
     if uart.any():
         response: Optional[bytes] = uart.read()
@@ -33,25 +41,27 @@ def send_command(uart: machine.UART, command: str) -> None:
             try:
                 print("Response:", response.decode().strip())
             except UnicodeDecodeError:
-                print("Nicht decodierbare Daten empfangen:", response)
+                print("Received undecodable data:", response)
 
 def main() -> None:
-    """Hauptschleife zur Benutzereingabe und Kommunikation per UART2."""
     uart2: machine.UART = initialize_uart(2, 9600)
     clear_uart_buffer(uart2)
 
+    print("ESP32 ↔ Arduino Mega UART Communication Started.")
+    print_command_list()
+
     while True:
         try:
-            command: str = input("Enter command (or 'exit' to quit):\n").strip()
+            command: str = input("Enter command: ").strip()
             if command.lower() == "exit":
-                print("Beende Programm...")
+                print("Exiting program...")
                 break
             send_command(uart2, command)
         except KeyboardInterrupt:
-            print("\nVom Benutzer abgebrochen.")
+            print("\nProgram interrupted.")
             break
         except Exception as e:
-            print("Fehler:", e)
+            print("Error:", e)
 
 if __name__ == "__main__":
     main()
